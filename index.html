@@ -1,11 +1,863 @@
 <!DOCTYPE html>
-<html lang="en">
+
+<html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>タップランナー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Dots&family=M+PLUS+Rounded+1c:wght@400;800&display=swap');
+
+- { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: #0a0a1a;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+overflow: hidden;
+font-family: ‘M PLUS Rounded 1c’, sans-serif;
+touch-action: none;
+user-select: none;
+}
+
+#gameWrapper {
+position: relative;
+width: 100%;
+max-width: 430px;
+height: 100vh;
+overflow: hidden;
+background: linear-gradient(180deg, #0d0d2b 0%, #1a1a4e 40%, #0a1628 100%);
+}
+
+/* Stars background */
+.stars {
+position: absolute;
+width: 100%;
+height: 60%;
+top: 0;
+}
+.star {
+position: absolute;
+background: white;
+border-radius: 50%;
+animation: twinkle 2s infinite alternate;
+}
+@keyframes twinkle {
+from { opacity: 0.3; }
+to { opacity: 1; }
+}
+
+/* Ground layers */
+#ground-back {
+position: absolute;
+bottom: 120px;
+width: 200%;
+height: 60px;
+background: linear-gradient(180deg, #1e3a5f 0%, #0d2137 100%);
+animation: scrollBack 8s linear infinite;
+}
+#ground-mid {
+position: absolute;
+bottom: 80px;
+width: 200%;
+height: 50px;
+background: linear-gradient(180deg, #1a5276 0%, #0d2137 100%);
+animation: scrollMid 5s linear infinite;
+}
+#ground {
+position: absolute;
+bottom: 0;
+width: 100%;
+height: 90px;
+background: linear-gradient(180deg, #00d4ff 0%, #0066aa 30%, #003366 100%);
+box-shadow: 0 -4px 20px rgba(0, 212, 255, 0.5);
+}
+#ground::before {
+content: ‘’;
+position: absolute;
+top: 0;
+width: 100%;
+height: 4px;
+background: #00ffff;
+box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+}
+
+@keyframes scrollBack {
+from { transform: translateX(0); }
+to { transform: translateX(-50%); }
+}
+@keyframes scrollMid {
+from { transform: translateX(0); }
+to { transform: translateX(-50%); }
+}
+
+/* Player (bike character) */
+#player {
+position: absolute;
+bottom: 90px;
+left: 60px;
+width: 60px;
+height: 50px;
+transition: filter 0.1s;
+}
+
+/* Canvas for game objects */
+#gameCanvas {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+}
+
+/* HUD */
+#hud {
+position: absolute;
+top: 0;
+left: 0;
+right: 0;
+padding: 16px 20px;
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+pointer-events: none;
+z-index: 10;
+}
+.hud-box {
+background: rgba(0, 212, 255, 0.1);
+border: 1px solid rgba(0, 212, 255, 0.3);
+border-radius: 12px;
+padding: 8px 14px;
+backdrop-filter: blur(4px);
+}
+.hud-label {
+font-size: 10px;
+color: rgba(0, 212, 255, 0.7);
+letter-spacing: 2px;
+text-transform: uppercase;
+}
+.hud-value {
+font-family: ‘Zen Dots’, cursive;
+font-size: 22px;
+color: #00ffff;
+text-shadow: 0 0 10px #00ffff;
+line-height: 1.1;
+}
+
+/* Life hearts */
+#lives {
+display: flex;
+gap: 4px;
+font-size: 20px;
+}
+.heart { transition: transform 0.2s; }
+.heart.lost { filter: grayscale(1) opacity(0.3); }
+
+/* Screens */
+.screen {
+position: absolute;
+inset: 0;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+z-index: 20;
+background: rgba(0, 0, 0, 0.85);
+}
+.screen.hidden { display: none; visibility: hidden; }
+
+.screen-title {
+font-family: ‘Zen Dots’, cursive;
+font-size: 40px;
+color: #00ffff;
+text-shadow: 0 0 20px #00ffff, 0 0 40px #0066ff;
+margin-bottom: 8px;
+letter-spacing: 2px;
+}
+.screen-sub {
+font-size: 14px;
+color: rgba(255,255,255,0.6);
+margin-bottom: 40px;
+letter-spacing: 3px;
+}
+
+.tap-btn {
+background: linear-gradient(135deg, #00d4ff, #0066ff);
+border: none;
+border-radius: 50px;
+padding: 18px 50px;
+font-family: ‘M PLUS Rounded 1c’, sans-serif;
+font-size: 20px;
+font-weight: 800;
+color: white;
+cursor: pointer;
+box-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 4px 15px rgba(0,0,0,0.3);
+animation: pulse 1.5s ease-in-out infinite;
+letter-spacing: 2px;
+}
+@keyframes pulse {
+0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(0, 212, 255, 0.5); }
+50% { transform: scale(1.05); box-shadow: 0 0 50px rgba(0, 212, 255, 0.8); }
+}
+
+.score-big {
+font-family: ‘Zen Dots’, cursive;
+font-size: 70px;
+color: white;
+text-shadow: 0 0 20px rgba(255,255,255,0.5);
+line-height: 1;
+margin-bottom: 4px;
+}
+.score-label {
+font-size: 12px;
+color: rgba(255,255,255,0.5);
+letter-spacing: 4px;
+margin-bottom: 6px;
+}
+.best-score {
+font-family: ‘Zen Dots’, cursive;
+font-size: 20px;
+color: #ffd700;
+text-shadow: 0 0 10px gold;
+margin-bottom: 40px;
+}
+
+/* Obstacles and effects */
+#effectLayer {
+position: absolute;
+inset: 0;
+pointer-events: none;
+z-index: 5;
+}
+
+.hit-flash {
+animation: hitFlash 0.3s ease;
+}
+@keyframes hitFlash {
+0% { filter: brightness(1); }
+50% { filter: brightness(3) hue-rotate(20deg); }
+100% { filter: brightness(1); }
+}
+
+/* Speed lines */
+#speedLines {
+position: absolute;
+inset: 0;
+pointer-events: none;
+z-index: 3;
+opacity: 0;
+transition: opacity 0.3s;
+}
+#speedLines.active { opacity: 1; }
+
+/* Combo indicator */
+#combo {
+position: absolute;
+top: 100px;
+right: 20px;
+font-family: ‘Zen Dots’, cursive;
+font-size: 28px;
+color: #ffd700;
+text-shadow: 0 0 10px gold;
+opacity: 0;
+transition: opacity 0.3s;
+z-index: 10;
+pointer-events: none;
+}
+#combo.show { opacity: 1; animation: comboAnim 0.3s ease; }
+@keyframes comboAnim {
+0% { transform: scale(0.5) translateY(10px); }
+60% { transform: scale(1.2) translateY(-5px); }
+100% { transform: scale(1) translateY(0); }
+}
+
+/* Tutorial hint */
+#hint {
+position: absolute;
+bottom: 160px;
+left: 50%;
+transform: translateX(-50%);
+font-size: 13px;
+color: rgba(255,255,255,0.5);
+letter-spacing: 2px;
+text-align: center;
+animation: fadeHint 3s ease forwards;
+z-index: 10;
+pointer-events: none;
+white-space: nowrap;
+}
+@keyframes fadeHint {
+0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; }
+}
+</style>
+
 </head>
 <body>
-    <h1>Hello, World!</h1>
+<div id="gameWrapper">
+  <!-- Stars -->
+  <div class="stars" id="stars"></div>
+
+  <!-- Parallax ground layers -->
+
+  <div id="ground-back"></div>
+  <div id="ground-mid"></div>
+  <div id="ground"></div>
+
+  <!-- Speed lines SVG -->
+
+  <svg id="speedLines" viewBox="0 0 430 800" preserveAspectRatio="none">
+    <g stroke="rgba(0,212,255,0.15)" stroke-width="1">
+      <line x1="0" y1="200" x2="430" y2="180"/>
+      <line x1="0" y1="300" x2="430" y2="280"/>
+      <line x1="0" y1="400" x2="430" y2="420"/>
+      <line x1="0" y1="150" x2="430" y2="130"/>
+      <line x1="0" y1="350" x2="430" y2="370"/>
+      <line x1="0" y1="250" x2="430" y2="240"/>
+    </g>
+  </svg>
+
+  <!-- Player SVG -->
+
+  <div id="player">
+    <svg viewBox="0 0 60 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Wheels -->
+      <circle cx="12" cy="40" r="9" stroke="#00ffff" stroke-width="2.5" fill="#001133"/>
+      <circle cx="12" cy="40" r="3" fill="#00ffff"/>
+      <circle cx="46" cy="40" r="9" stroke="#00ffff" stroke-width="2.5" fill="#001133"/>
+      <circle cx="46" cy="40" r="3" fill="#00ffff"/>
+      <!-- Frame -->
+      <line x1="12" y1="40" x2="29" y2="22" stroke="#00d4ff" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="29" y1="22" x2="46" y2="40" stroke="#00d4ff" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="29" y1="22" x2="22" y2="40" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="40" x2="22" y2="33" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+      <!-- Handlebar -->
+      <line x1="29" y1="22" x2="36" y2="18" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="36" y1="18" x2="34" y2="22" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+      <!-- Seat -->
+      <line x1="29" y1="22" x2="23" y2="20" stroke="#0099ff" stroke-width="2" stroke-linecap="round"/>
+      <!-- Rider body -->
+      <ellipse cx="30" cy="13" rx="7" ry="8" fill="#0044aa" stroke="#00aaff" stroke-width="1.5"/>
+      <!-- Rider head -->
+      <circle cx="37" cy="9" r="6" fill="#ffcc99" stroke="#00aaff" stroke-width="1"/>
+      <!-- Helmet -->
+      <path d="M31 7 Q37 1 43 7" stroke="#ff3366" stroke-width="2.5" fill="#ff3366" stroke-linecap="round"/>
+      <!-- Arms -->
+      <line x1="33" y1="13" x2="37" y2="18" stroke="#0066cc" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <!-- Game canvas for obstacles / items -->
+
+<canvas id="gameCanvas"></canvas>
+
+  <!-- Effect layer -->
+
+  <div id="effectLayer"></div>
+
+  <!-- HUD -->
+
+  <div id="hud">
+    <div class="hud-box">
+      <div class="hud-label">SCORE</div>
+      <div class="hud-value" id="scoreDisplay">0</div>
+    </div>
+    <div>
+      <div id="lives">
+        <span class="heart" id="h1">❤️</span>
+        <span class="heart" id="h2">❤️</span>
+        <span class="heart" id="h3">❤️</span>
+      </div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">BEST</div>
+      <div class="hud-value" id="bestDisplay">0</div>
+    </div>
+  </div>
+
+  <!-- Combo -->
+
+  <div id="combo"></div>
+
+  <!-- START screen -->
+
+  <div class="screen" id="startScreen">
+    <div class="screen-title">TAP<br>RIDER</div>
+    <div class="screen-sub">タップだけで操作！</div>
+    <button class="tap-btn" id="startBtn">スタート</button>
+    <div style="margin-top:24px; color:rgba(255,255,255,0.4); font-size:12px; letter-spacing:2px;">
+      タップで ジャンプ！
+    </div>
+  </div>
+
+  <!-- GAME OVER screen -->
+
+  <div class="screen hidden" id="overScreen">
+    <div style="font-family:'Zen Dots',cursive; font-size:36px; color:#ff3366; text-shadow:0 0 20px #ff3366; margin-bottom:16px;">GAME OVER</div>
+    <div class="score-label">SCORE</div>
+    <div class="score-big" id="finalScore">0</div>
+    <div class="best-score" id="newBest"></div>
+    <button class="tap-btn" id="retryBtn">もう一回！</button>
+  </div>
+</div>
+
+<script>
+// ===== STAR BACKGROUND =====
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 60; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  const sz = Math.random() * 2.5 + 0.5;
+  s.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${1.5+Math.random()*2}s`;
+  starsEl.appendChild(s);
+}
+
+// ===== GAME STATE =====
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const playerEl = document.getElementById('player');
+const wrapper = document.getElementById('gameWrapper');
+
+let W, H;
+function resize() {
+  W = wrapper.clientWidth;
+  H = wrapper.clientHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const GROUND_Y = () => H - 90;
+const PLAYER_X = 75;
+const PLAYER_W = 60;
+const PLAYER_H = 50;
+
+let state = 'start'; // 'start' | 'playing' | 'over'
+let score = 0;
+let bestScore = parseInt(localStorage.getItem('tapRiderBest') || '0');
+let lives = 3;
+let invincible = false;
+let jumpVY = 0;
+let playerY = 0; // relative to ground, positive = up
+let isJumping = false;
+let doubleJump = false;
+let obstacles = [];
+let coins = [];
+let particles = [];
+let speedMultiplier = 1;
+let frameCount = 0;
+let comboCount = 0;
+let comboTimer = 0;
+let groundScrollX = 0;
+let groundPattern = null;
+
+document.getElementById('bestDisplay').textContent = bestScore;
+
+const GRAVITY = 0.55;
+const JUMP_FORCE = -13;
+const BASE_SPEED = 5;
+
+// ===== INPUT =====
+function handleTap(e) {
+  if (state !== 'playing') return;
+  e.preventDefault();
+  doJump();
+}
+wrapper.addEventListener('touchstart', handleTap, { passive: false });
+wrapper.addEventListener('mousedown', handleTap);
+
+function doJump() {
+  if (!isJumping) {
+    jumpVY = JUMP_FORCE;
+    isJumping = true;
+    doubleJump = true;
+    spawnJumpParticles();
+  } else if (doubleJump) {
+    jumpVY = JUMP_FORCE * 0.85;
+    doubleJump = false;
+    spawnJumpParticles();
+  }
+}
+
+// ===== GAME BUTTONS =====
+function bindBtn(id) {
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', (e) => {
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+    e.preventDefault();
+    startGame();
+  }, { passive: false });
+  el.addEventListener('click', (e) => {
+    e.stopImmediatePropagation();
+    startGame();
+  });
+}
+bindBtn('startBtn');
+bindBtn('retryBtn');
+
+function startGame() {
+  if (state === 'playing') return;
+  state = 'playing';
+  score = 0;
+  lives = 3;
+  invincible = false;
+  jumpVY = 0;
+  playerY = 0;
+  isJumping = false;
+  doubleJump = false;
+  obstacles = [];
+  coins = [];
+  particles = [];
+  speedMultiplier = 1;
+  frameCount = 0;
+  comboCount = 0;
+  comboTimer = 0;
+  lastObstacleFrame = 0;
+  lastCoinFrame = 0;
+  updateHearts();
+  document.getElementById('scoreDisplay').textContent = '0';
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('overScreen').classList.add('hidden');
+  document.getElementById('speedLines').classList.remove('active');
+}
+
+// ===== OBSTACLE & COIN SPAWN =====
+const OBSTACLE_TYPES = [
+  { w: 28, h: 45, color: '#ff3366', label: '▲', isLow: false },  // tall spike
+  { w: 50, h: 25, color: '#ff6600', label: '■', isLow: false },  // wide block
+  { w: 20, h: 65, color: '#cc00ff', label: '◆', isLow: false },  // extra tall
+  { w: 60, h: 18, color: '#ff3300', label: '━', isLow: false },  // long low
+];
+
+function spawnObstacle() {
+  const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+  // Sometimes spawn 2 consecutive
+  const double = Math.random() < 0.2 && speedMultiplier > 1.3;
+  obstacles.push({
+    x: W + 20,
+    y: GROUND_Y() - type.h,
+    w: type.w, h: type.h,
+    color: type.color,
+    glow: type.color,
+  });
+  if (double) {
+    const type2 = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+    obstacles.push({
+      x: W + 20 + type.w + 30 + Math.random() * 40,
+      y: GROUND_Y() - type2.h,
+      w: type2.w, h: type2.h,
+      color: type2.color,
+      glow: type2.color,
+    });
+  }
+}
+
+function spawnCoin() {
+  const baseY = GROUND_Y() - 30 - Math.random() * 80;
+  for (let i = 0; i < 3 + Math.floor(Math.random()*3); i++) {
+    coins.push({
+      x: W + 20 + i * 35,
+      y: baseY,
+      r: 10,
+      collected: false,
+      rot: 0,
+    });
+  }
+}
+
+// ===== PARTICLES =====
+function spawnJumpParticles() {
+  const px = PLAYER_X;
+  const py = GROUND_Y() - playerY;
+  for (let i = 0; i < 8; i++) {
+    const angle = (Math.PI * 1.2) + (Math.random() - 0.5) * 1.5;
+    const speed = 2 + Math.random() * 4;
+    particles.push({
+      x: px, y: py,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1, decay: 0.05 + Math.random() * 0.03,
+      size: 3 + Math.random() * 5,
+      color: `hsl(${180 + Math.random()*60}, 100%, 70%)`,
+    });
+  }
+}
+
+function spawnCoinParticles(x, y) {
+  for (let i = 0; i < 12; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 5;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 1, decay: 0.04 + Math.random() * 0.03,
+      size: 2 + Math.random() * 4,
+      color: `hsl(${45 + Math.random()*20}, 100%, 65%)`,
+    });
+  }
+}
+
+function spawnHitParticles(x, y) {
+  for (let i = 0; i < 16; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 3 + Math.random() * 6;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 3,
+      life: 1, decay: 0.03 + Math.random() * 0.03,
+      size: 3 + Math.random() * 7,
+      color: `hsl(${0 + Math.random()*30}, 100%, 60%)`,
+    });
+  }
+}
+
+// ===== COLLISION =====
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+// ===== HEARTS =====
+function updateHearts() {
+  for (let i = 1; i <= 3; i++) {
+    const h = document.getElementById('h' + i);
+    h.classList.toggle('lost', i > lives);
+  }
+}
+
+// ===== COMBO =====
+function addCombo() {
+  comboCount++;
+  comboTimer = 120;
+  const el = document.getElementById('combo');
+  if (comboCount >= 3) {
+    el.textContent = `COMBO x${comboCount} 🔥`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+}
+function resetCombo() {
+  comboCount = 0;
+  document.getElementById('combo').classList.remove('show');
+}
+
+// ===== MAIN UPDATE =====
+let lastObstacleFrame = 0;
+let lastCoinFrame = 0;
+
+function update() {
+  if (state !== 'playing') return;
+  frameCount++;
+  score++;
+  speedMultiplier = 1 + Math.floor(score / 300) * 0.15;
+  const speed = BASE_SPEED * speedMultiplier;
+
+  // Speed lines at high speed
+  document.getElementById('speedLines').classList.toggle('active', speedMultiplier > 1.6);
+
+  // Player physics
+  jumpVY += GRAVITY;
+  playerY -= jumpVY;
+  if (playerY <= 0) {
+    playerY = 0;
+    jumpVY = 0;
+    isJumping = false;
+    doubleJump = false;
+  }
+
+  // Player screen position
+  const py = GROUND_Y() - playerY - PLAYER_H;
+  playerEl.style.bottom = (playerY + 90) + 'px';
+
+  // Spawn obstacles
+  const obstacleGap = Math.max(70, 120 - frameCount * 0.03);
+  if (frameCount - lastObstacleFrame > obstacleGap / speedMultiplier) {
+    spawnObstacle();
+    lastObstacleFrame = frameCount;
+  }
+
+  // Spawn coins
+  if (frameCount - lastCoinFrame > 90 / speedMultiplier) {
+    spawnCoin();
+    lastCoinFrame = frameCount;
+  }
+
+  // Move obstacles
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    ob.x -= speed;
+    if (ob.x + ob.w < 0) { obstacles.splice(i, 1); continue; }
+
+    // Collision
+    if (!invincible && rectsOverlap(PLAYER_X+8, py+6, PLAYER_W-16, PLAYER_H-10, ob.x, ob.y, ob.w, ob.h)) {
+      lives--;
+      updateHearts();
+      resetCombo();
+      invincible = true;
+      spawnHitParticles(PLAYER_X + PLAYER_W/2, py + PLAYER_H/2);
+      playerEl.classList.add('hit-flash');
+      setTimeout(() => playerEl.classList.remove('hit-flash'), 300);
+      setTimeout(() => { invincible = false; }, 1500);
+      obstacles.splice(i, 1);
+      if (lives <= 0) { gameOver(); return; }
+    }
+  }
+
+  // Move coins
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const c = coins[i];
+    c.x -= speed;
+    c.rot += 0.1;
+    if (c.x + c.r < 0) { coins.splice(i, 1); continue; }
+    if (!c.collected && rectsOverlap(PLAYER_X+5, py+5, PLAYER_W-10, PLAYER_H-8, c.x-c.r, c.y-c.r, c.r*2, c.r*2)) {
+      c.collected = true;
+      score += 30;
+      spawnCoinParticles(c.x, c.y);
+      addCombo();
+      coins.splice(i, 1);
+    }
+  }
+
+  // Combo timer
+  if (comboTimer > 0) {
+    comboTimer--;
+    if (comboTimer <= 0) resetCombo();
+  }
+
+  // Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.2;
+    p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Score display
+  document.getElementById('scoreDisplay').textContent = score;
+}
+
+// ===== DRAW =====
+function drawObstacle(ob) {
+  ctx.save();
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = ob.glow;
+  ctx.fillStyle = ob.color;
+  ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+  // Highlight stripe
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(ob.x + 4, ob.y + 4, 4, ob.h - 8);
+  ctx.restore();
+}
+
+function drawCoin(c) {
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = '#ffd700';
+  // Coin flip effect
+  const scaleX = Math.cos(c.rot);
+  ctx.scale(scaleX, 1);
+  ctx.beginPath();
+  ctx.arc(0, 0, c.r, 0, Math.PI*2);
+  const grad = ctx.createRadialGradient(-3, -3, 1, 0, 0, c.r);
+  grad.addColorStop(0, '#fff9c4');
+  grad.addColorStop(0.5, '#ffd700');
+  grad.addColorStop(1, '#b8860b');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = '#ffa500';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Coin star
+  if (Math.abs(scaleX) > 0.3) {
+    ctx.fillStyle = 'rgba(255,255,200,0.7)';
+    ctx.font = `bold ${c.r}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('¥', 0, 0);
+  }
+  ctx.restore();
+}
+
+function drawParticle(p) {
+  ctx.save();
+  ctx.globalAlpha = p.life;
+  ctx.fillStyle = p.color;
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = p.color;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Ground line pattern
+function drawGroundLine() {
+  ctx.save();
+  groundScrollX -= BASE_SPEED * speedMultiplier;
+  if (groundScrollX < -40) groundScrollX += 40;
+
+  const gy = GROUND_Y();
+  ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([30, 10]);
+  ctx.lineDashOffset = groundScrollX;
+  ctx.beginPath();
+  ctx.moveTo(0, gy + 20);
+  ctx.lineTo(W, gy + 20);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  if (state !== 'playing') return;
+
+  // Invincible blink
+  if (invincible && Math.floor(frameCount / 6) % 2 === 0) {
+    playerEl.style.opacity = '0.3';
+  } else {
+    playerEl.style.opacity = '1';
+  }
+
+  drawGroundLine();
+  obstacles.forEach(drawObstacle);
+  coins.forEach(drawCoin);
+  particles.forEach(drawParticle);
+}
+
+// ===== GAME OVER =====
+function gameOver() {
+  state = 'over';
+  playerEl.style.opacity = '1';
+  document.getElementById('speedLines').classList.remove('active');
+
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('tapRiderBest', bestScore);
+    document.getElementById('bestDisplay').textContent = bestScore;
+    document.getElementById('newBest').textContent = '🏆 NEW BEST!';
+  } else {
+    document.getElementById('newBest').textContent = `BEST: ${bestScore}`;
+  }
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('overScreen').classList.remove('hidden');
+}
+
+// ===== LOOP =====
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
 </body>
 </html>
