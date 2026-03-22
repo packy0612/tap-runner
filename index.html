@@ -70,7 +70,7 @@ animation: scrollMid 5s linear infinite;
 position: absolute;
 bottom: 0;
 width: 100%;
-height: 90px;
+height: 130px;
 background: linear-gradient(180deg, #00d4ff 0%, #0066aa 30%, #003366 100%);
 box-shadow: 0 -4px 20px rgba(0, 212, 255, 0.5);
 }
@@ -429,7 +429,7 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-const GROUND_Y = () => H - 90;
+const GROUND_Y = () => H - 130;
 const PLAYER_X = 75;
 const PLAYER_W = 60;
 const PLAYER_H = 50;
@@ -672,7 +672,7 @@ function update() {
 
   // Player screen position
   const py = GROUND_Y() - playerY - PLAYER_H;
-  playerEl.style.bottom = (playerY + 90) + 'px';
+  playerEl.style.bottom = (playerY + 130) + 'px';
 
   // Spawn obstacles
   const obstacleGap = Math.max(70, 120 - frameCount * 0.03);
